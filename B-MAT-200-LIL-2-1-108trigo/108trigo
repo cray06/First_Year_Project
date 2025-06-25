@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+import sys
+import math
+
+def parse_args():
+    if len(sys.argv) < 3:
+        print("USAGE\n./108trigo fun a0 a1 a2 ...\nDESCRIPTION")
+        print("fun\tfunction to be applied, among at least EXP, COS, SIN, COSH\n\tand SINH")
+        print("ai\tcoeficients of the matrix")
+        sys.exit(84)
+    func_name = sys.argv[1]
+    if func_name not in ["EXP", "COS", "SIN", "COSH", "SINH"]:
+        print(f"Error: Function '{func_name}' not supported.", file=sys.stderr)
+        sys.exit(84)
+    coeffs = []
+    for i in range(2, len(sys.argv)):
+        try:
+            coeffs.append(float(sys.argv[i]))
+        except ValueError:
+            print(f"Error: Invalid coefficient '{sys.argv[i]}'.", file=sys.stderr)
+            sys.exit(84)
+    size = int(math.sqrt(len(coeffs)))
+    if size * size != len(coeffs):
+        print("Error: Number of coefficients does not form a square matrix.", file=sys.stderr)
+        sys.exit(84)
+    matrice = []
+    for i in range(size):
+        row = []
+        for j in range(size):
+            row.append(coeffs[i * size + j])
+        matrice.append(row)
+    return func_name, matrice
+
+def create_identity_matrice(size):
+    matrice = [[0.0 for _ in range(size)] for _ in range(size)]
+    for i in range(size):
+        matrice[i][i] = 1.0
+    return matrice
+
+def create_zero_matrice(size):
+    return [[0.0 for _ in range(size)] for _ in range(size)]
+
+def matrice_multiply(A, B):
+    size = len(A)
+    result = create_zero_matrice(size)
+    for i in range(size):
+        for j in range(size):
+            sum_val = 0.0
+            for k in range(size):
+                sum_val += A[i][k] * B[k][j]
+            result[i][j] = sum_val
+    return result
+
+def matrice_scalaire_multiply(matrice, scalaire):
+    size = len(matrice)
+    result = create_zero_matrice(size)
+    for i in range(size):
+        for j in range(size):
+            result[i][j] = matrice[i][j] * scalaire
+    return result
+
+def matrice_add(A, B):
+    size = len(A)
+    result = create_zero_matrice(size)
+    for i in range(size):
+        for j in range(size):
+            result[i][j] = A[i][j] + B[i][j]
+    return result
+
+def matrice_copy(matrice):
+    size = len(matrice)
+    result = create_zero_matrice(size)
+    for i in range(size):
+        for j in range(size):
+            result[i][j] = matrice[i][j]
+    return result
+
+def factorial(n):
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result
+
+def exp_matrice(matrice):
+    size = len(matrice)
+    result = create_identity_matrice(size)
+    term = create_identity_matrice(size)
+    for n in range(1, 50):
+        term = matrice_multiply(term, matrice)
+        term_n = matrice_scalaire_multiply(term, 1.0 / factorial(n))
+        result = matrice_add(result, term_n)
+    return result
+
+def sin_matrice(matrice):
+    size = len(matrice)
+    result = create_zero_matrice(size)
+    term = matrice_copy(matrice)
+    for n in range(0, 50):
+        term_n = matrice_scalaire_multiply(term, ((-1) ** n) / factorial(2 * n + 1))
+        result = matrice_add(result, term_n)
+        if n < 49:
+            term = matrice_multiply(term, matrice)
+            term = matrice_multiply(term, matrice)
+    return result
+
+def cos_matrice(matrice):
+    size = len(matrice)
+    result = create_identity_matrice(size)
+    term = create_identity_matrice(size)
+    for n in range(1, 50):
+        term = matrice_multiply(term, matrice)
+        term = matrice_multiply(term, matrice)
+        term_n = matrice_scalaire_multiply(term, ((-1) ** n) / factorial(2 * n))
+        result = matrice_add(result, term_n)
+    return result
+
+def sinh_matrice(matrice):
+    size = len(matrice)
+    result = create_zero_matrice(size)
+    term = matrice_copy(matrice)
+    for n in range(0, 50):
+        term_n = matrice_scalaire_multiply(term, 1.0 / factorial(2 * n + 1))
+        result = matrice_add(result, term_n)
+        if n < 49:
+            term = matrice_multiply(term, matrice)
+            term = matrice_multiply(term, matrice)
+    return result
+
+def cosh_matrice(matrice):
+    size = len(matrice)
+    result = create_identity_matrice(size)
+    term = create_identity_matrice(size)
+    for n in range(1, 50):
+        term = matrice_multiply(term, matrice)
+        term = matrice_multiply(term, matrice)
+        term_n = matrice_scalaire_multiply(term, 1.0 / factorial(2 * n))
+        result = matrice_add(result, term_n)
+    return result
+
+def print_matrice(matrice):
+    for row in matrice:
+        print(' '.join([f"{val:.2f}" for val in row]))
+
+def main():
+    func_name, matrice = parse_args()
+    if func_name == "EXP":
+        result = exp_matrice(matrice)
+    elif func_name == "SIN":
+        result = sin_matrice(matrice)
+    elif func_name == "COS":
+        result = cos_matrice(matrice)
+    elif func_name == "SINH":
+        result = sinh_matrice(matrice)
+    elif func_name == "COSH":
+        result = cosh_matrice(matrice)
+    print_matrice(result)
+
+if __name__ == "__main__":
+    main()

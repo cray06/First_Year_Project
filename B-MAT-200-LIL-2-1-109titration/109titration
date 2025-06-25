@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+import sys
+import math
+import csv
+
+def display_help():
+    print("USAGE")
+    print("    ./109titration file")
+    print("DESCRIPTION")
+    print("    file    a csv file containing \"vol;ph\" lines")
+    sys.exit(0)
+
+def error_exit(message):
+    print(message, file=sys.stderr)
+    sys.exit(84)
+
+def read_csv(filename):
+    points = []
+    try:
+        with open(filename, 'r') as file:
+            reader = csv.reader(file, delimiter=';')
+            for row in reader:
+                if len(row) != 2:
+                    error_exit(f"Invalid format in CSV file: {row}")
+                try:
+                    vol = float(row[0])
+                    ph = float(row[1])
+                    points.append((vol, ph))
+                except ValueError:
+                    error_exit(f"Invalid data in CSV file: {row}")
+        points.sort(key=lambda x: x[0])
+        return points
+    except FileNotFoundError:
+        error_exit(f"File not found: {filename}")
+    except IOError:
+        error_exit(f"Error reading file: {filename}")
+
+def compute_derivative(points):
+    derivatives = []
+    n = len(points)
+    if n < 3:
+        error_exit("Not enough data points to compute derivatives")
+    for i in range(1, n-1):
+        vol_prev, ph_prev = points[i-1]
+        vol, ph = points[i]
+        vol_next, ph_next = points[i+1]
+        h1 = vol - vol_prev
+        h2 = vol_next - vol
+        forward_rate = (ph_next - ph) / h2
+        backward_rate = (ph - ph_prev) / h1
+        w1 = h2 / (h1 + h2)
+        w2 = h1 / (h1 + h2)
+        derivative = w1 * backward_rate + w2 * forward_rate
+        derivatives.append((vol, derivative))
+    return derivatives
+
+def compute_second_derivative(derivatives):
+    second_derivatives = []
+    n = len(derivatives)
+    if n < 3:
+        error_exit("Not enough data points to compute second derivatives")
+    for i in range(1, n-1):
+        vol_prev, deriv_prev = derivatives[i-1]
+        vol, deriv = derivatives[i]
+        vol_next, deriv_next = derivatives[i+1]
+        h1 = vol - vol_prev
+        h2 = vol_next - vol
+        forward_rate = (deriv_next - deriv) / h2
+        backward_rate = (deriv - deriv_prev) / h1
+        w1 = h2 / (h1 + h2)
+        w2 = h1 / (h1 + h2)
+        second_derivative = w1 * backward_rate + w2 * forward_rate
+        second_derivatives.append((vol, second_derivative))
+    return second_derivatives
+
+def find_equivalence_point(derivatives):
+    max_deriv = max(derivatives, key=lambda x: x[1])
+    return max_deriv[0]
+
+def interpolate_second_derivative(second_derivatives, center_vol, step=0.1):
+    interpolated = []
+    min_vol = center_vol - 0.5
+    max_vol = center_vol + 1.0
+    vols = [vol for vol, _ in second_derivatives]
+    min_idx = 0
+    while min_idx < len(vols) and vols[min_idx] < min_vol:
+        min_idx += 1
+    min_idx = max(0, min_idx - 1)
+    max_idx = min_idx
+    while max_idx < len(vols) - 1 and vols[max_idx] < max_vol:
+        max_idx += 1
+    max_idx = min(len(vols) - 1, max_idx + 1)
+    segment = second_derivatives[min_idx:max_idx+1]
+    curr_vol = min_vol
+    while curr_vol <= max_vol:
+        curr_vol = round(curr_vol * 10) / 10
+        interpolated_value = None
+        for i in range(len(segment) - 1):
+            vol1, deriv1 = segment[i]
+            vol2, deriv2 = segment[i+1]
+            if vol1 <= curr_vol <= vol2:
+                if vol2 - vol1 == 0:
+                    interpolated_value = deriv1
+                else:
+                    t = (curr_vol - vol1) / (vol2 - vol1)
+                    interpolated_value = deriv1 + t * (deriv2 - deriv1)
+                interpolated.append((curr_vol, interpolated_value))
+                break
+        if interpolated_value is None:
+            if curr_vol < segment[0][0]:
+                interpolated.append((curr_vol, segment[0][1]))
+            elif curr_vol > segment[-1][0]:
+                interpolated.append((curr_vol, segment[-1][1]))
+        curr_vol += step
+    return interpolated
+
+def find_precise_equivalence_point(interpolated):
+    for i in range(len(interpolated) - 1):
+        vol1, deriv1 = interpolated[i]
+        vol2, deriv2 = interpolated[i+1]
+        if deriv1 * deriv2 <= 0 and deriv1 != deriv2:
+            t = deriv1 / (deriv1 - deriv2)
+            equiv_vol = vol1 + t * (vol2 - vol1)
+            return equiv_vol
+    return None
+
+def main():
+    if len(sys.argv) != 2:
+        error_exit("Invalid number of arguments")
+    if sys.argv[1] == "-h":
+        display_help()
+    points = read_csv(sys.argv[1])
+    derivatives = compute_derivative(points)
+    print("Derivative:")
+    for vol, deriv in derivatives:
+        print(f"{vol:.1f} ml -> {deriv:.2f}")
+    equiv_vol = find_equivalence_point(derivatives)
+    print(f"\nEquivalence point at {equiv_vol:.1f} ml\n")
+    second_derivatives = compute_second_derivative(derivatives)
+    print("Second derivative:")
+    for vol, deriv in second_derivatives:
+        print(f"{vol:.1f} ml -> {deriv:.2f}")
+    interpolated = interpolate_second_derivative(second_derivatives, equiv_vol)
+    print("\nSecond derivative estimated:")
+    for vol, deriv in interpolated:
+        print(f"{vol:.1f} ml -> {deriv:.2f}")
+    precise_equiv_vol = find_precise_equivalence_point(interpolated)
+    if precise_equiv_vol:
+        print(f"\nEquivalence point at {precise_equiv_vol:.1f} ml")
+    else:
+        print(f"Equivalence point cannot be determined precisely")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,5 @@
+asm
+.vscode
+src/*.o
+champions
+*.cor

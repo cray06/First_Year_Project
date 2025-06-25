@@ -1,0 +1,50 @@
+#!/usr/bin/python3
+
+import math
+import sys
+
+def pong_game(x0, y0, z0, x1, y1, z1, n):
+    vx = x1 - x0
+    vy = y1 - y0
+    vz = z1 - z0
+    velocity_vector = (vx, vy, vz)
+    print(f"The velocity vector of the ball is:\n({vx:.2f}, {vy:.2f}, {vz:.2f})")
+    
+    future_x = x1 + n * vx
+    future_y = y1 + n * vy
+    future_z = z1 + n * vz
+    future_coordinates = (future_x, future_y, future_z)
+    print(f"At time t + {n}, ball coordinates will be:\n({future_x:.2f}, {future_y:.2f}, {future_z:.2f})")
+    
+    if vz != 0:
+        time_to_paddle = -z1 / vz
+        if time_to_paddle > 0:
+            horizontal_speed = math.sqrt(vx**2 + vy**2)
+            angle_of_impact = math.degrees(math.atan(abs(vz) / horizontal_speed))
+            print(f"The incidence angle is:\n{angle_of_impact:.2f} degrees")
+        else:
+            print("The ball won't reach the paddle.")
+    else:
+        print("The ball won't reach the paddle.")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 8:
+        print("Usage: ./101pong x0 y0 z0 x1 y1 z1 n")
+        sys.exit(84)
+    try:
+        x0 = float(sys.argv[1])
+        y0 = float(sys.argv[2])
+        z0 = float(sys.argv[3])
+        x1 = float(sys.argv[4])
+        y1 = float(sys.argv[5])
+        z1 = float(sys.argv[6])
+        n = float(sys.argv[7])
+
+        if n <= 0 or not n.is_integer():
+            print("Error: The time shift (n) must be a positive integer.")
+            sys.exit(84)
+            
+        pong_game(x0, y0, z0, x1, y1, z1, int(n))
+    except ValueError:
+        print("Error: All arguments must be numbers.")
+        sys.exit(84)

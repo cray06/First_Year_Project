@@ -1,0 +1,4 @@
+corewar
+*.o
+*~
+*.cor

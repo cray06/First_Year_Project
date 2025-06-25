@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+import sys
+
+def print_usage_and_exit():
+    print("USAGE")
+    print("    ./106bombyx n [k | i0 i1]")
+    print("DESCRIPTION")
+    print("    n\tnumber of first generation individuals")
+    print("    k\tgrowth rate from 1 to 4")
+    print("    i0\tinitial generation (included)")
+    print("    i1\tfinal generation (included)")
+    sys.exit(0)
+
+def validate_args(args):
+    if len(args) == 2 and args[1] == "-h":
+        print_usage_and_exit()
+    if len(args) not in [3, 4]:
+        sys.exit(84)
+    try:
+        n = float(args[1])
+        if len(args) == 3:
+            k = float(args[2])
+            if not (1 <= k <= 4):
+                sys.exit(84)
+        else:
+            i0 = int(args[2])
+            i1 = int(args[3])
+            if i0 > i1 or i0 < 1:
+                sys.exit(84)
+    except ValueError:
+        sys.exit(84)
+
+def calculate_generation(n, k, x_prev):
+    return k * x_prev * (1000 - x_prev) / 1000
+
+def simulate_with_k(n, k, generations=100):
+    results = [(1, n)]
+    x = n
+    for i in range(2, generations + 1):
+        x = calculate_generation(n, k, x)
+        results.append((i, x))
+    return results
+
+def simulate_range(n, i0, i1):
+    results = []
+    k = 1.0
+    while k <= 4.0:
+        x = n
+        for i in range(1, i1 + 1):
+            if i >= i0:
+                results.append((k, x))
+            x = calculate_generation(n, k, x)
+        k += 0.01
+    return results
+
+def main():
+    validate_args(sys.argv)
+    n = int(sys.argv[1])
+
+    if len(sys.argv) == 3:
+        k = float(sys.argv[2])
+        results = simulate_with_k(n, k)
+        for gen, pop in results:
+            print(f"{gen} {pop:.2f}")
+    else:
+        i0, i1 = int(sys.argv[2]), int(sys.argv[3])
+        results = simulate_range(n, i0, i1)
+        for k, x in results:
+            print(f"{k:.2f} {x:.2f}")
+
+if __name__ == "__main__":
+    main()

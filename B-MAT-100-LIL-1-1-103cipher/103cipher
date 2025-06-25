@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+
+import sys
+import math
+from fractions import Fraction
+
+def generate_key_matrix(matrix, size, args):
+    row = col = idx = 0
+    while row < size:
+        matrix.append([])
+        while col < size and idx < len(args[2]):
+            matrix[row].append(ord(args[2][idx]))
+            col += 1
+            idx += 1
+        row += 1
+        col = 0
+    while len(matrix[row - 2]) < size:
+        matrix[row - 2].append(0)
+    while len(matrix[row - 1]) < size:
+        matrix[row - 1].append(0)
+    return matrix
+
+def transpose_key(matrix, size):
+    transposed_matrix = []
+    for i in range(size):
+        transposed_matrix.append([matrix[j][i] for j in range(size)])
+    return transposed_matrix
+
+def calculate_inverse_element(matrix, size, row, col, determinant):
+    minor = [[matrix[i][j] for j in range(size) if j != col] for i in range(size) if i != row]
+    cofactor = ((-1) ** (row + col)) * determinant_of_matrix(minor)
+    return cofactor / determinant
+
+def determinant_of_matrix(matrix):
+    if len(matrix) == 2:
+        return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]
+    determinant = 0
+    for c in range(len(matrix)):
+        determinant += ((-1) ** c) * matrix[0][c] * determinant_of_matrix([row[:c] + row[c+1:] for row in matrix[1:]])
+    return determinant
+
+def invert_key_matrix(matrix, size):
+    if size == 1:
+        if matrix[0][0] == 0:
+            print("Matrix is singular and cannot be inverted!")
+            exit(84)
+        return [[1/matrix[0][0]]]
+    elif size == 2:
+        determinant = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]
+        if determinant == 0:
+            print("Matrix is singular and cannot be inverted!")
+            exit(84)
+        
+        inverted = [
+            [matrix[1][1]/determinant, -matrix[0][1]/determinant],
+            [-matrix[1][0]/determinant, matrix[0][0]/determinant]
+        ]
+        return inverted
+    else:
+        determinant = (matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[2][1] * matrix[1][2]) -
+                      matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[2][0] * matrix[1][2]) +
+                      matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[2][0] * matrix[1][1]))
+        if determinant == 0:
+            print("Matrix is singular and cannot be inverted!")
+            exit(84)
+        inverted_matrix = []
+        row = col = 0
+        matrix = transpose_key(matrix, size)
+        while row < size:
+            inverted_matrix.append([])
+            while col < size:
+                inverse_element = calculate_inverse_element(matrix, size, row, col, determinant)
+                inverted_matrix[row].append(inverse_element)
+                col += 1
+            row += 1
+            col = 0
+        return inverted_matrix
+
+def generate_message_matrix(matrix, size, rows, args):
+    if mode == 1:
+        numbers = args[1].split()
+        row = 0
+        while row < rows:
+            matrix.append([])
+            for col in range(size):
+                idx = row * size + col
+                if idx < len(numbers):
+                    matrix[row].append(float(numbers[idx]))
+                else:
+                    matrix[row].append(0)
+            row += 1
+    else:
+        idx = 0
+        for row in range(rows):
+            matrix.append([])
+            for col in range(size):
+                if idx < len(args[1]):
+                    matrix[row].append(ord(args[1][idx]))
+                else:
+                    matrix[row].append(0)
+                idx += 1
+    return matrix
+
+def generate_result_matrix(result, size, rows, key_matrix, message_matrix):
+    for i in range(len(message_matrix)):
+        for j in range(size):
+            temp = 0
+            for k in range(size):
+                try:
+                    temp += float(message_matrix[i][k]) * float(key_matrix[k][j])
+                except IndexError:
+                    temp += 0
+            result.append(temp)
+    return result
+
+if len(sys.argv) != 4:
+    exit(84)
+
+mode = int(sys.argv[3])
+
+if mode not in [0, 1]:
+    exit(84)
+
+key_matrix = []
+message_matrix = []
+result_matrix = []
+
+size = int(math.sqrt(len(sys.argv[2])))
+if float(math.sqrt(len(sys.argv[2]))) % 1 != 0:
+    size += 1
+
+if size == 0:
+    exit(84)
+
+if (float(len(sys.argv[1])) / size) % 1 != 0:
+    rows = int(len(sys.argv[1]) / size) + 1
+else:
+    rows = int(len(sys.argv[1]) / size)
+
+key_matrix = generate_key_matrix(key_matrix, size, sys.argv)
+
+if mode == 0:
+    message_matrix = generate_message_matrix(message_matrix, size, rows, sys.argv)
+else:
+    message_matrix = generate_message_matrix(message_matrix, size, rows, sys.argv)
+    key_matrix = invert_key_matrix(key_matrix, size)
+
+result_matrix = generate_result_matrix(result_matrix, size, rows, key_matrix, message_matrix)
+
+print("Key matrix:")
+for row in range(size):
+    row_values = []
+    for col in range(size):
+        if mode == 1:
+            row_values.append(f"{float(key_matrix[row][col]):.3f}")
+        else:
+            row_values.append(str(key_matrix[row][col]))
+    print(' '.join(row_values))
+
+if mode == 0:
+    print("\nEncrypted message:")
+    print(' '.join(str(int(i)) for i in result_matrix))
+else:
+    print("\nDecrypted message:")
+    decrypted_message = ""
+    for num in result_matrix:
+        rounded_num = int(round(num))
+        if 0 <= rounded_num < 1114112:
+            decrypted_message += chr(rounded_num)
+    print(decrypted_message)

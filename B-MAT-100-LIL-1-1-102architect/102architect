@@ -1,0 +1,131 @@
+#!/usr/bin/python3
+
+import sys
+import math
+
+def deg_to_rad(degrees):
+    return degrees * math.pi / 180
+
+def matrix_multiply(A, B):
+    result = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+    for i in range(3):
+        for j in range(3):
+            result[i][j] = sum(A[i][k] * B[k][j] for k in range(3))
+    return result
+
+def apply_transformation(matrix, point):
+    x, y = point
+    new_x = matrix[0][0] * x + matrix[0][1] * y + matrix[0][2]
+    new_y = matrix[1][0] * x + matrix[1][1] * y + matrix[1][2]
+    return (new_x, new_y)
+
+def translation_matrix(i, j):
+    return [
+        [1, 0, i],
+        [0, 1, j],
+        [0, 0, 1]
+    ]
+
+def scaling_matrix(m, n):
+    return [
+        [m, 0, 0],
+        [0, n, 0],
+        [0, 0, 1]
+    ]
+
+def rotation_matrix(d):
+    rad = deg_to_rad(d)
+    return [
+        [math.cos(rad), -math.sin(rad), 0],
+        [math.sin(rad), math.cos(rad), 0],
+        [0, 0, 1]
+    ]
+
+def reflection_matrix(d):
+    rad = deg_to_rad(d)
+    return [
+        [math.cos(2 * rad), math.sin(2 * rad), 0],
+        [math.sin(2 * rad), -math.cos(2 * rad), 0],
+        [0, 0, 1]
+    ]
+
+def main():
+    if len(sys.argv) < 4 or sys.argv[1] == '-h':
+        print("Usage: ./102architect x y transfo1 arg1 [arg2] [transfo2 arg21 [arg22]] ...")
+        sys.exit(84)
+    
+    x = float(sys.argv[1])
+    y = float(sys.argv[2])
+    point = (x, y)
+    
+    result_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    
+    transformation_matrices = []
+    i = 3
+    while i < len(sys.argv):
+        transfo = sys.argv[i]
+        if transfo == '-t':
+            if i + 2 >= len(sys.argv):
+                sys.exit(84)
+            i += 1
+            try:
+                i1 = int(sys.argv[i])
+                i += 1
+                i2 = int(sys.argv[i])
+            except ValueError:
+                sys.exit(84)
+            translation = translation_matrix(i1, i2)
+            transformation_matrices.append(translation)
+            print(f"Translation along vector ({i1}, {i2})")
+        elif transfo == '-z':
+            if i + 2 >= len(sys.argv):
+                sys.exit(84)
+            i += 1
+            try:
+                m = int(sys.argv[i])
+                i += 1
+                n = int(sys.argv[i])
+            except ValueError:
+                sys.exit(84)
+            scaling = scaling_matrix(m, n)
+            transformation_matrices.append(scaling)
+            print(f"Scaling by factors {m} and {n}")
+        elif transfo == '-r':
+            if i + 1 >= len(sys.argv):
+                sys.exit(84)
+            i += 1
+            try:
+                d = int(sys.argv[i])
+            except ValueError:
+                sys.exit(84)
+            rotation = rotation_matrix(d)
+            transformation_matrices.append(rotation)
+            print(f"Rotation by a {d} degree angle")
+        elif transfo == '-s':
+            if i + 1 >= len(sys.argv):
+                sys.exit(84)
+            i += 1
+            try:
+                d = int(sys.argv[i])
+            except ValueError:
+                sys.exit(84)
+            reflection = reflection_matrix(d)
+            transformation_matrices.append(reflection)
+            print(f"Reflection over an axis with an inclination angle of {d} degrees")
+        else:
+            print(f"Invalid transformation: {transfo}")
+            sys.exit(84)
+        i += 1
+
+    for matrix in reversed(transformation_matrices):
+        result_matrix = matrix_multiply(result_matrix, matrix)
+    
+    transformed_point = apply_transformation(result_matrix, point)
+    
+    for row in result_matrix:
+        print(f"{row[0]:.2f} {row[1]:.2f} {row[2]:.2f}")
+    
+    print(f"({x:.2f}, {y:.2f}) => ({transformed_point[0]:.2f}, {transformed_point[1]:.2f})")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+import sys
+
+def parse_polynomial(coeff_str):
+    try:
+        return [float(coeff) for coeff in coeff_str.split('*')]
+    except ValueError:
+        raise ValueError(f"Invalid coefficient format: {coeff_str}")
+
+def evaluate_polynomial(coefficients, x):
+    result = 0
+    for i, coeff in enumerate(coefficients):
+        result += coeff * (x ** i)
+    return result
+
+def evaluate_transfer_function(numerator, denominator, x):
+    num_val = evaluate_polynomial(numerator, x)
+    den_val = evaluate_polynomial(denominator, x)
+    if den_val == 0:
+        return float('inf')
+    return num_val / den_val
+
+def print_usage():
+    print("USAGE")
+    print(" ./107transfer [num den]+")
+    print("DESCRIPTION")
+    print(" num polynomial numerator defined by its coefficients")
+    print(" den polynomial denominator defined by its coefficients")
+
+def main():
+    if len(sys.argv) == 2 and sys.argv[1] == "-h":
+        print_usage()
+        return 0
+    
+    if len(sys.argv) < 3 or len(sys.argv) % 2 != 1:
+        print("Error: Invalid number of arguments", file=sys.stderr)
+        print_usage()
+        return 84
+    
+    transfer_functions = []
+    try:
+        for i in range(1, len(sys.argv), 2):
+            numerator = parse_polynomial(sys.argv[i])
+            denominator = parse_polynomial(sys.argv[i + 1])
+            if all(coeff == 0 for coeff in denominator):
+                print(f"Error: Denominator polynomial cannot be zero", file=sys.stderr)
+                return 84
+            transfer_functions.append((numerator, denominator))
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 84
+    x_values = [i * 0.001 for i in range(1001)]
+    for x in x_values:
+        result = 1.0
+        for numerator, denominator in transfer_functions:
+            transfer_func_value = evaluate_transfer_function(numerator, denominator, x)
+            result *= transfer_func_value
+        if not (result == result) or result == float('inf') or result == float('-inf'):
+            print(f"{x:.3f} -> undefined")
+        else:
+            print(f"{x:.3f} -> {result:.5f}")
+    
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
